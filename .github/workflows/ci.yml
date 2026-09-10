@@ -32,7 +32,13 @@ jobs:
       - uses: actions/setup-go@v5
         with: {go-version-file: go.mod}
       - run: go vet ./... && go vet -tags integration ./...
-      - run: go test ./...
+      - run: go test -coverprofile=coverage.out ./...
+      - uses: codecov/codecov-action@v5
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unit
+          fail_ci_if_error: false
 
   build:
     runs-on: ubuntu-24.04
@@ -81,7 +87,14 @@ jobs:
       - name: Run integration tests
         run: |
           sudo env "PATH=$PATH" INCUS_TEST_POOL=default INCUS_TEST_INSTANCE=csi-it-vm \
-            go test -tags integration ./test/integration/... -v
+            go test -tags integration -coverpkg=./internal/incusvol/... -coverprofile=coverage-integration.out ./test/integration/... -v
+
+      - uses: codecov/codecov-action@v5
+        with:
+          files: coverage-integration.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: integration
+          fail_ci_if_error: false
 
       - name: Delete test VM
         if: always()

@@ -113,6 +113,11 @@ go build ./...
 docker build -t csi-incus .
 ```
 
+CI's `docker` job publishes the image to `ghcr.io/beryju/csi-incus` on every
+push to `main` (tagged `latest`, the branch name, and the commit SHA) using
+`docker/build-push-action`; pull requests build the same image to catch a
+broken Dockerfile but never push it.
+
 ## Testing
 
 `go test ./...` runs the (non-integration) unit build. The real coverage is

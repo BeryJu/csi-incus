@@ -19,7 +19,7 @@ spec:
       hostPID: true
       containers:
         - name: driver
-          image: ghcr.io/example/csi-incus:latest
+          image: ghcr.io/beryju/csi-incus:latest
           args:
             - --mode=node
             - --endpoint=unix:///csi/csi.sock

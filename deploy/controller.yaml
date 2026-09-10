@@ -19,7 +19,7 @@ spec:
       serviceAccountName: csi-incus-controller
       containers:
         - name: driver
-          image: ghcr.io/example/csi-incus:latest
+          image: ghcr.io/beryju/csi-incus:latest
           args:
             - --mode=controller
             - --endpoint=unix:///csi/csi.sock

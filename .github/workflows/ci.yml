@@ -50,7 +50,41 @@ jobs:
       - uses: actions/setup-go@v7
         with: {go-version-file: go.mod}
       - run: go build ./... && go build -tags integration ./...
-      - run: docker build -t csi-incus:ci .
+
+  docker:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          # PRs still build the image (catches a broken Dockerfile) but
+          # never push — GITHUB_TOKEN on a fork PR has no packages:write
+          # anyway.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   integration-test:
     # Uses the GitHub-hosted runner's built-in KVM support to boot a real

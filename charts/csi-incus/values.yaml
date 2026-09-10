@@ -1,0 +1,85 @@
+image:
+  repository: ghcr.io/beryju/csi-incus
+  tag: "" # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+driverName: incus.csi.linuxcontainers.org
+
+# Incus API connection used by the controller. The node plugin needs none
+# of this — it only formats/mounts a device the controller already
+# attached. See the chart README for how the TLS values below are used.
+incus:
+  # https://host:8443, or empty/"unix://path" for a local socket (only
+  # useful if the controller pod happens to run on the Incus host itself).
+  addr: ""
+  insecureSkipVerify: false
+  tls:
+    # Leave clientCert/clientKey empty to have the chart generate a
+    # self-signed client keypair on first install (persisted across
+    # upgrades) — you still have to register it with Incus yourself, see
+    # the NOTES printed after install.
+    clientCert: ""
+    clientKey: ""
+    # PEM certificate of the Incus server, so the controller can pin it
+    # instead of trusting the system CA pool. Required unless
+    # incus.insecureSkipVerify is true.
+    serverCert: ""
+
+controller:
+  replicaCount: 1
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  sidecars:
+    provisioner:
+      image: registry.k8s.io/sig-storage/csi-provisioner
+      tag: v5.1.0
+    attacher:
+      image: registry.k8s.io/sig-storage/csi-attacher
+      tag: v4.8.0
+    snapshotter:
+      image: registry.k8s.io/sig-storage/csi-snapshotter
+      tag: v8.2.0
+    resizer:
+      image: registry.k8s.io/sig-storage/csi-resizer
+      tag: v1.13.1
+
+node:
+  resources: {}
+  nodeSelector: {}
+  tolerations:
+    - operator: Exists # csi node plugins must run everywhere, incl. tainted nodes
+  affinity: {}
+  sidecars:
+    nodeDriverRegistrar:
+      image: registry.k8s.io/sig-storage/csi-node-driver-registrar
+      tag: v2.12.0
+
+rbac:
+  create: true
+
+# StorageClasses to create. Each entry's `pool` selects the Incus storage
+# pool it provisions into. Set `[]` to manage StorageClasses yourself.
+storageClasses:
+  - name: incus-block
+    pool: default
+    contentType: block # "block" (VM-only) or "filesystem"
+    reclaimPolicy: Delete
+    volumeBindingMode: WaitForFirstConsumer
+    allowVolumeExpansion: true
+    isDefaultClass: false
+
+volumeSnapshotClass:
+  create: true
+  name: incus-block
+  deletionPolicy: Delete
+
+# Prometheus Operator ServiceMonitors for the controller-side sidecars
+# (csi-provisioner/attacher/snapshotter/resizer all expose /metrics).
+# Requires the monitoring.coreos.com/v1 CRDs to already be installed.
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}

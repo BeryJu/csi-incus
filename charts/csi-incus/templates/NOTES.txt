@@ -1,0 +1,25 @@
+csi-incus is installed. Before it can provision anything:
+
+1. Register the controller's client certificate with your Incus server —
+   Helm generated one if you didn't set incus.tls.clientCert/clientKey:
+
+     kubectl get secret -n {{ .Release.Namespace }} {{ include "csi-incus.fullname" . }}-incus-tls \
+       -o jsonpath='{.data.client-cert}' | base64 -d > csi-incus-client.crt
+
+     scp csi-incus-client.crt your-incus-host:/tmp/
+     ssh your-incus-host incus config trust add-certificate /tmp/csi-incus-client.crt --name csi-incus
+
+2. Make sure every Kubernetes Node's name equals its Incus instance name —
+   ControllerPublishVolume uses the Node name directly as the Incus
+   instance to attach volumes to.
+
+3. Block-content-type volumes (the default) only attach to Incus VMs, not
+   containers — use --set storageClasses[0].contentType=filesystem if your
+   nodes are containers.
+
+{{- if not (.Values.incus.tls.serverCert) }}
+
+incus.tls.serverCert is unset: the controller will validate the Incus API
+against the system CA pool (or not at all, if incus.insecureSkipVerify is
+also true). Set it to pin the server's actual certificate instead.
+{{- end }}

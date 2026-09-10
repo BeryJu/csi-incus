@@ -1,7 +1,7 @@
 apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:
-  name: incus.csi.linuxcontainers.org
+  name: {{ .Values.driverName }}
 spec:
   attachRequired: true
   podInfoOnMount: false

@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "csi-incus.fullname" . }}-controller
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controller.replicaCount }}
+  selector:
+    matchLabels: {{- include "csi-incus.controller.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "csi-incus.controller.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "csi-incus.fullname" . }}-controller
+      nodeSelector: {{- .Values.controller.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{- .Values.controller.tolerations | toYaml | nindent 8 }}
+      affinity: {{- .Values.controller.affinity | toYaml | nindent 8 }}
+      containers:
+        - name: driver
+          image: {{ include "csi-incus.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --mode=controller
+            - --endpoint=unix:///csi/csi.sock
+          env:
+            - name: INCUS_ADDR
+              valueFrom: {secretKeyRef: {name: {{ include "csi-incus.fullname" . }}-incus-tls, key: addr}}
+            - name: INCUS_CLIENT_CERT
+              value: /incus-tls/client-cert
+            - name: INCUS_CLIENT_KEY
+              value: /incus-tls/client-key
+            {{- if .Values.incus.tls.serverCert }}
+            - name: INCUS_SERVER_CERT
+              value: /incus-tls/server-cert
+            {{- end }}
+            {{- if .Values.incus.insecureSkipVerify }}
+            - name: INCUS_INSECURE_SKIP_VERIFY
+              value: "true"
+            {{- end }}
+          volumeMounts:
+            - {name: socket-dir, mountPath: /csi}
+            - {name: incus-tls, mountPath: /incus-tls, readOnly: true}
+          resources: {{- .Values.controller.resources | toYaml | nindent 12 }}
+        - name: csi-provisioner
+          image: "{{ .Values.controller.sidecars.provisioner.image }}:{{ .Values.controller.sidecars.provisioner.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --leader-election
+            {{- if .Values.metrics.serviceMonitor.enabled }}
+            - --metrics-address=:8081
+            {{- end }}
+          volumeMounts: [{name: socket-dir, mountPath: /csi}]
+        - name: csi-attacher
+          image: "{{ .Values.controller.sidecars.attacher.image }}:{{ .Values.controller.sidecars.attacher.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --leader-election
+            {{- if .Values.metrics.serviceMonitor.enabled }}
+            - --metrics-address=:8082
+            {{- end }}
+          volumeMounts: [{name: socket-dir, mountPath: /csi}]
+        - name: csi-snapshotter
+          image: "{{ .Values.controller.sidecars.snapshotter.image }}:{{ .Values.controller.sidecars.snapshotter.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --leader-election
+            {{- if .Values.metrics.serviceMonitor.enabled }}
+            - --metrics-address=:8083
+            {{- end }}
+          volumeMounts: [{name: socket-dir, mountPath: /csi}]
+        - name: csi-resizer
+          image: "{{ .Values.controller.sidecars.resizer.image }}:{{ .Values.controller.sidecars.resizer.tag }}"
+          args:
+            - --csi-address=/csi/csi.sock
+            - --leader-election
+            {{- if .Values.metrics.serviceMonitor.enabled }}
+            - --metrics-address=:8084
+            {{- end }}
+          volumeMounts: [{name: socket-dir, mountPath: /csi}]
+      volumes:
+        - {name: socket-dir, emptyDir: {}}
+        - name: incus-tls
+          secret:
+            secretName: {{ include "csi-incus.fullname" . }}-incus-tls
+            items:
+              - {key: client-cert, path: client-cert}
+              - {key: client-key, path: client-key}
+              {{- if .Values.incus.tls.serverCert }}
+              - {key: server-cert, path: server-cert}
+              {{- end }}

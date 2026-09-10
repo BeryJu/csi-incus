@@ -1,13 +1,15 @@
+{{- if .Values.rbac.create }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-incus-controller
-  namespace: kube-system
+  name: {{ include "csi-incus.fullname" . }}-controller
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: csi-incus-controller
+  name: {{ include "csi-incus.fullname" . }}-controller
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -49,26 +51,28 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: csi-incus-controller
+  name: {{ include "csi-incus.fullname" . }}-controller
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: csi-incus-controller
-    namespace: kube-system
+    name: {{ include "csi-incus.fullname" . }}-controller
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: csi-incus-controller
+  name: {{ include "csi-incus.fullname" . }}-controller
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-incus-node
-  namespace: kube-system
+  name: {{ include "csi-incus.fullname" . }}-node
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: csi-incus-node
+  name: {{ include "csi-incus.fullname" . }}-node
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -77,12 +81,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: csi-incus-node
+  name: {{ include "csi-incus.fullname" . }}-node
+  labels: {{- include "csi-incus.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: csi-incus-node
-    namespace: kube-system
+    name: {{ include "csi-incus.fullname" . }}-node
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: csi-incus-node
+  name: {{ include "csi-incus.fullname" . }}-node
   apiGroup: rbac.authorization.k8s.io
+{{- end }}

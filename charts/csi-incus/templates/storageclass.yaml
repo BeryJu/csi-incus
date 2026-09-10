@@ -1,0 +1,19 @@
+{{- range .Values.storageClasses }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .name }}
+  {{- if .isDefaultClass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels: {{- include "csi-incus.labels" $ | nindent 4 }}
+provisioner: {{ $.Values.driverName }}
+parameters:
+  pool: {{ .pool | required (printf "storageClasses[%s].pool is required" .name) | quote }}
+  contentType: {{ .contentType | default "block" | quote }}
+reclaimPolicy: {{ .reclaimPolicy | default "Delete" }}
+volumeBindingMode: {{ .volumeBindingMode | default "WaitForFirstConsumer" }}
+allowVolumeExpansion: {{ .allowVolumeExpansion | default false }}
+---
+{{- end }}

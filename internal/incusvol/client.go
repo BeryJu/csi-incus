@@ -117,7 +117,7 @@ func GetVolume(s incus.InstanceServer, pool, name string) (sizeBytes int64, cont
 	}
 
 	var sz int64
-	fmt.Sscanf(vol.Config["size"], "%d", &sz)
+	_, _ = fmt.Sscanf(vol.Config["size"], "%d", &sz)
 
 	return sz, vol.ContentType, nil
 }
@@ -165,7 +165,7 @@ func ListVolumes(s incus.InstanceServer) ([]Volume, error) {
 			}
 
 			var sz int64
-			fmt.Sscanf(v.Config["size"], "%d", &sz)
+			_, _ = fmt.Sscanf(v.Config["size"], "%d", &sz)
 
 			out = append(out, Volume{Pool: pool.Name, Name: v.Name, SizeBytes: sz, ContentType: v.ContentType})
 		}

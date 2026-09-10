@@ -138,10 +138,12 @@ func (s *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 			return nil, status.Errorf(codes.Internal, "create target parent: %v", err)
 		}
 
-		if f, err := os.OpenFile(target, os.O_CREATE, 0660); err != nil {
+		f, err := os.OpenFile(target, os.O_CREATE, 0660)
+		if err != nil {
 			return nil, status.Errorf(codes.Internal, "create target file: %v", err)
-		} else {
-			f.Close()
+		}
+		if err := f.Close(); err != nil {
+			return nil, status.Errorf(codes.Internal, "create target file: %v", err)
 		}
 
 		if err := s.Mounter.Mount(devPath, target, "", options); err != nil {

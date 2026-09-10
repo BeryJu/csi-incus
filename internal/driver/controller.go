@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"csi-incus/internal/incusvol"
+	"beryju.io/csi-incus/internal/incusvol"
 )
 
 const defaultVolumeSizeBytes = 1 << 30 // 1GiB, used when a PVC sets no size

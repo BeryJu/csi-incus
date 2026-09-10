@@ -20,7 +20,7 @@ import (
 
 	incus "github.com/lxc/incus/v7/client"
 
-	"csi-incus/internal/incusvol"
+	"beryju.io/csi-incus/internal/incusvol"
 )
 
 func testClient(t *testing.T) incus.InstanceServer {

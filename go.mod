@@ -1,4 +1,4 @@
-module csi-incus
+module beryju.io/csi-incus
 
 go 1.27.1
 
@@ -6,6 +6,7 @@ require (
 	github.com/container-storage-interface/spec v1.13.0
 	github.com/lxc/incus/v7 v7.4.0
 	google.golang.org/grpc v1.83.2
+	google.golang.org/protobuf v1.36.12
 	k8s.io/mount-utils v0.37.0
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 )
@@ -60,6 +61,5 @@ require (
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 )

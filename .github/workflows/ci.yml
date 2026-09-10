@@ -80,10 +80,16 @@ jobs:
           Signed-By: /etc/apt/keyrings/zabbly.asc
           EOF
           sudo apt-get update
-          sudo apt-get install -y incus qemu-system
+          sudo apt-get install -y incus qemu-system zfsutils-linux
 
       - name: Initialize Incus
-        run: sudo incus admin init --minimal
+        run: |
+          sudo incus admin init --minimal
+          # The dir-backed default pool incus admin init creates has no
+          # real snapshot support (custom-volume snapshots come out
+          # read-only and fail to delete) — zfs is what the driver is
+          # meant to run against.
+          sudo incus storage create citest zfs size=10GiB
 
       - name: Launch test VM
         run: |
@@ -93,7 +99,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          sudo env "PATH=$PATH" INCUS_TEST_POOL=default INCUS_TEST_INSTANCE=csi-it-vm \
+          sudo env "PATH=$PATH" INCUS_TEST_POOL=citest INCUS_TEST_INSTANCE=csi-it-vm \
             go test -tags integration -coverpkg=./internal/incusvol/... -coverprofile=coverage-integration.out ./test/integration/... -v
 
       - uses: codecov/codecov-action@v7

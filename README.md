@@ -131,7 +131,10 @@ test creates its own randomly-named scratch volume(s) and cleans up via
 `t.Cleanup`, regardless of pass/fail.
 
 CI (`.github/workflows/ci.yml`) runs this same suite on every push/PR: it
-installs Incus on the runner, `incus admin init --minimal`s a `dir` pool
-named `default`, boots a real Incus VM (using the GitHub-hosted runner's
-KVM support) to cover attach/detach, then runs `go test -tags integration`
-against it — alongside separate lint, unit-test, and build jobs.
+installs Incus on the runner, `incus admin init --minimal`s the default
+setup, then creates a loop-backed `zfs` pool for the tests to use (the
+`dir` driver `--minimal` defaults to doesn't really support snapshots —
+custom-volume snapshots come back read-only and fail to delete), boots a
+real Incus VM (using the GitHub-hosted runner's KVM support) to cover
+attach/detach, then runs `go test -tags integration` against it —
+alongside separate lint, unit-test, and build jobs.

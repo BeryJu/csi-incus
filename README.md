@@ -40,17 +40,27 @@ hand-rolled HTTP calls to the Incus API.
    container (an Incus/qemu restriction, not something this driver can work
    around). Use `contentType: filesystem` if your nodes are containers.
 3. The controller needs network access to the Incus API and a client
-   certificate authorized on the target project — see `deploy/controller.yaml`
-   and the `INCUS_ADDR`/`INCUS_CLIENT_CERT`/`INCUS_CLIENT_KEY`/
-   `INCUS_SERVER_CERT`/`INCUS_INSECURE_SKIP_VERIFY` env vars (or matching
-   `-incus-*` flags) read by `incusvol.Connect`. The node plugin needs none
-   of this — it only formats/mounts a device that's already attached.
+   certificate authorized on the target project — the
+   `INCUS_ADDR`/`INCUS_CLIENT_CERT`/`INCUS_CLIENT_KEY`/`INCUS_SERVER_CERT`/
+   `INCUS_INSECURE_SKIP_VERIFY` env vars (or matching `-incus-*` flags) read
+   by `incusvol.Connect`. The node plugin needs none of this — it only
+   formats/mounts a device that's already attached.
 
-Apply in order: `deploy/csidriver.yaml`, `deploy/rbac.yaml`, a
-`incus-credentials` Secret (see `deploy/controller.yaml`'s header comment),
-then `deploy/controller.yaml` and `deploy/node.yaml`. A sample
-StorageClass/VolumeSnapshotClass pair is in
-`deploy/storageclass-example.yaml`.
+## Installing
+
+```sh
+helm install csi-incus oci://ghcr.io/beryju/charts/csi-incus \
+  --namespace kube-system \
+  --set incus.addr=https://your-incus-host:8443
+```
+
+See [`charts/csi-incus/README.md`](charts/csi-incus/README.md) for the full
+values reference — StorageClasses, the Incus TLS client cert/key (the chart
+generates and persists a self-signed one if you don't supply your own),
+Prometheus `ServiceMonitor`s, sidecar image overrides, etc. The chart's
+post-install NOTES walk through registering that client certificate with
+Incus, which Helm can't do on your behalf (it's a call against your Incus
+server, not the Kubernetes API).
 
 Expanding a PVC resizes the Incus volume (`ControllerExpandVolume`); for
 block volumes with a guest filesystem, the node plugin then runs
@@ -62,49 +72,31 @@ runs for those.
 Not implemented (kept out on purpose — add if you need it): raw volume
 cloning without a snapshot, topology-aware scheduling.
 
-## Generating the controller's Incus client certificate
+## The controller's Incus client certificate
 
 The controller authenticates to Incus as a TLS client, like any other Incus
 client (`incus remote add`, Terraform, etc.) — there's nothing
-driver-specific here. On the machine that will hold the credentials:
+driver-specific here. The Helm chart generates a self-signed client
+keypair automatically if you don't set `incus.tls.clientCert`/
+`incus.tls.clientKey` yourself (and keeps reusing the same one across
+`helm upgrade`s). Either way, two things stay manual because they're calls
+against your Incus server, not the Kubernetes API:
 
-```sh
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 \
-  -keyout client.key -out client.crt -days 3650 -nodes \
-  -subj "/O=csi-incus"
-```
+1. Register the client certificate — the chart's post-install NOTES print
+   the exact commands, in short:
 
-Register that certificate on the Incus server (run on/against the server,
-with an already-trusted client — e.g. the admin's own `incus` CLI):
+   ```sh
+   kubectl get secret -n kube-system csi-incus-incus-tls -o jsonpath='{.data.client-cert}' | base64 -d > client.crt
+   scp client.crt incus-server:/tmp/csi-incus.crt
+   ssh incus-server incus config trust add-certificate /tmp/csi-incus.crt --name csi-incus
+   ```
 
-```sh
-scp client.crt incus-server:/tmp/csi-incus.crt
-ssh incus-server incus config trust add-certificate /tmp/csi-incus.crt --name csi-incus
-```
+2. Fetch the server's certificate, if you want to pin it (`incus.tls.serverCert`)
+   instead of trusting the system CA pool or setting `incus.insecureSkipVerify`:
 
-Then fetch the server's certificate so the controller can pin it instead of
-skipping TLS verification:
-
-```sh
-scp incus-server:/var/lib/incus/server.crt server.crt
-```
-
-Create the Secret `deploy/controller.yaml` expects:
-
-```sh
-kubectl create secret generic incus-credentials -n kube-system \
-  --from-literal=addr=https://incus-server:8443 \
-  --from-file=client-cert=client.crt \
-  --from-file=client-key=client.key \
-  --from-file=server-cert=server.crt
-```
-
-If your Incus API sits behind a load balancer or reverse proxy with its own
-publicly-trusted certificate instead, put that CA's certificate under the
-`server-cert` key (or the system CA already trusts it — set
-`--incus-insecure-skip-verify` and drop `INCUS_SERVER_CERT` from
-`deploy/controller.yaml` in that case, along with the now-unused
-`server-cert` Secret key and volume item).
+   ```sh
+   scp incus-server:/var/lib/incus/server.crt server.crt
+   ```
 
 ## Building
 
@@ -117,6 +109,14 @@ CI's `docker` job publishes the image to `ghcr.io/beryju/csi-incus` on every
 push to `main` (tagged `latest`, the branch name, and the commit SHA) using
 `docker/build-push-action`; pull requests build the same image to catch a
 broken Dockerfile but never push it.
+
+## Releasing
+
+Pushing a `v*` tag (e.g. `v1.2.3`) additionally tags that same image build
+with the version (`docker/metadata-action`'s `type=semver` tags) and runs
+the `helm` job: it packages `charts/csi-incus` with the chart and app
+version both set to the tag, and pushes it with `helm push` to
+`oci://ghcr.io/beryju/charts/csi-incus`.
 
 ## Testing
 

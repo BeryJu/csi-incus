@@ -45,7 +45,7 @@ func main() {
 	}
 
 	srv := grpc.NewServer()
-	csi.RegisterIdentityServer(srv, &driver.IdentityServer{})
+	csi.RegisterIdentityServer(srv, &driver.IdentityServer{HasController: modes["controller"]})
 
 	if modes["controller"] {
 		conn, err := incusvol.Connect(incusvol.ConnConfig{

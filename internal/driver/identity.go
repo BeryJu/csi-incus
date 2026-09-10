@@ -16,7 +16,7 @@ const (
 type IdentityServer struct {
 	csi.UnimplementedIdentityServer
 
-	hasController bool
+	HasController bool
 }
 
 func (s *IdentityServer) GetPluginInfo(context.Context, *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
@@ -33,7 +33,7 @@ func (s *IdentityServer) GetPluginCapabilities(context.Context, *csi.GetPluginCa
 		}}},
 	}
 
-	if !s.hasController {
+	if !s.HasController {
 		caps = nil
 	}
 

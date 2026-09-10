@@ -62,6 +62,50 @@ runs for those.
 Not implemented (kept out on purpose — add if you need it): raw volume
 cloning without a snapshot, topology-aware scheduling.
 
+## Generating the controller's Incus client certificate
+
+The controller authenticates to Incus as a TLS client, like any other Incus
+client (`incus remote add`, Terraform, etc.) — there's nothing
+driver-specific here. On the machine that will hold the credentials:
+
+```sh
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 \
+  -keyout client.key -out client.crt -days 3650 -nodes \
+  -subj "/O=csi-incus"
+```
+
+Register that certificate on the Incus server (run on/against the server,
+with an already-trusted client — e.g. the admin's own `incus` CLI):
+
+```sh
+scp client.crt incus-server:/tmp/csi-incus.crt
+ssh incus-server incus config trust add-certificate /tmp/csi-incus.crt --name csi-incus
+```
+
+Then fetch the server's certificate so the controller can pin it instead of
+skipping TLS verification:
+
+```sh
+scp incus-server:/var/lib/incus/server.crt server.crt
+```
+
+Create the Secret `deploy/controller.yaml` expects:
+
+```sh
+kubectl create secret generic incus-credentials -n kube-system \
+  --from-literal=addr=https://incus-server:8443 \
+  --from-file=client-cert=client.crt \
+  --from-file=client-key=client.key \
+  --from-file=server-cert=server.crt
+```
+
+If your Incus API sits behind a load balancer or reverse proxy with its own
+publicly-trusted certificate instead, put that CA's certificate under the
+`server-cert` key (or the system CA already trusts it — set
+`--incus-insecure-skip-verify` and drop `INCUS_SERVER_CERT` from
+`deploy/controller.yaml` in that case, along with the now-unused
+`server-cert` Secret key and volume item).
+
 ## Building
 
 ```
@@ -85,3 +129,9 @@ INCUS_ADDR=... INCUS_CLIENT_CERT=... INCUS_CLIENT_KEY=... \
 With no `INCUS_ADDR` etc. set, it connects over the local unix socket. Each
 test creates its own randomly-named scratch volume(s) and cleans up via
 `t.Cleanup`, regardless of pass/fail.
+
+CI (`.github/workflows/ci.yml`) runs this same suite on every push/PR: it
+installs Incus on the runner, `incus admin init --minimal`s a `dir` pool
+named `default`, boots a real Incus VM (using the GitHub-hosted runner's
+KVM support) to cover attach/detach, then runs `go test -tags integration`
+against it — alongside separate lint, unit-test, and build jobs.

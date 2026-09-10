@@ -87,7 +87,8 @@ jobs:
 
       - name: Launch test VM
         run: |
-          sudo incus launch images:alpine/edge csi-it-vm --vm -c limits.memory=512MiB
+          sudo incus launch images:debian/trixie csi-it-vm --vm \
+            -c limits.memory=512MiB -c security.secureboot=false
           timeout 120 bash -c 'until [ "$(sudo incus list csi-it-vm --format csv -c s)" = "RUNNING" ]; do sleep 2; done'
 
       - name: Run integration tests

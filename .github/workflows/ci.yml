@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
 permissions:
@@ -74,6 +75,8 @@ jobs:
             type=ref,event=branch
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
       - uses: docker/build-push-action@v7
         with:
           context: .
@@ -85,6 +88,25 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  helm:
+    # Chart releases are versioned events, not a thing to redo on every
+    # push to main — only cut one when a vX.Y.Z tag says to.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - name: Package and push chart
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          helm package charts/csi-incus --version "$version" --app-version "$version" -d dist
+          helm registry login ghcr.io -u ${{ github.actor }} --password-stdin <<< "${{ secrets.GITHUB_TOKEN }}"
+          helm push "dist/csi-incus-$version.tgz" oci://ghcr.io/beryju/charts
 
   integration-test:
     # Uses the GitHub-hosted runner's built-in KVM support to boot a real

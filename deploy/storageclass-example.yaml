@@ -1,0 +1,18 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: incus-block
+provisioner: incus.csi.linuxcontainers.org
+parameters:
+  pool: default        # Incus storage pool name (required)
+  contentType: block    # "block" (default, VM-only) or "filesystem"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: incus-block
+driver: incus.csi.linuxcontainers.org
+deletionPolicy: Delete

@@ -1,0 +1,48 @@
+# Runs on every node. Each node here is an Incus instance, and its
+# Kubernetes Node name MUST equal that instance's name — that's what
+# ControllerPublishVolume uses to attach the disk to the right VM. No
+# Incus credentials needed: attaching is the controller's job, this only
+# formats/mounts whatever already showed up as a local block device.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: csi-incus-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels: {app: csi-incus-node}
+  template:
+    metadata:
+      labels: {app: csi-incus-node}
+    spec:
+      serviceAccountName: csi-incus-node
+      hostPID: true
+      containers:
+        - name: driver
+          image: ghcr.io/example/csi-incus:latest
+          args:
+            - --mode=node
+            - --endpoint=unix:///csi/csi.sock
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - {name: socket-dir, mountPath: /csi}
+            - {name: pods-mount-dir, mountPath: /var/lib/kubelet, mountPropagation: Bidirectional}
+            - {name: dev-dir, mountPath: /dev}
+        - name: node-driver-registrar
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0
+          args:
+            - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/incus.csi.linuxcontainers.org/csi.sock
+          volumeMounts:
+            - {name: socket-dir, mountPath: /csi}
+            - {name: registration-dir, mountPath: /registration}
+      volumes:
+        - name: socket-dir
+          hostPath: {path: /var/lib/kubelet/plugins/incus.csi.linuxcontainers.org, type: DirectoryOrCreate}
+        - name: registration-dir
+          hostPath: {path: /var/lib/kubelet/plugins_registry, type: Directory}
+        - name: pods-mount-dir
+          hostPath: {path: /var/lib/kubelet, type: Directory}
+        - name: dev-dir
+          hostPath: {path: /dev, type: Directory}

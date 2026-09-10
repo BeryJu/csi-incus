@@ -27,6 +27,9 @@ jobs:
 
   test:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # for Codecov's OIDC upload, no CODECOV_TOKEN needed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -35,8 +38,8 @@ jobs:
       - run: go test -coverprofile=coverage.out ./...
       - uses: codecov/codecov-action@v5
         with:
+          use_oidc: true
           files: coverage.out
-          token: ${{ secrets.CODECOV_TOKEN }}
           flags: unit
           fail_ci_if_error: false
 
@@ -53,6 +56,9 @@ jobs:
     # Uses the GitHub-hosted runner's built-in KVM support to boot a real
     # Incus VM, since block-content-type volumes can only attach to VMs.
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # for Codecov's OIDC upload, no CODECOV_TOKEN needed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -91,8 +97,8 @@ jobs:
 
       - uses: codecov/codecov-action@v5
         with:
+          use_oidc: true
           files: coverage-integration.out
-          token: ${{ secrets.CODECOV_TOKEN }}
           flags: integration
           fail_ci_if_error: false
 

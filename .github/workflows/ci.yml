@@ -36,7 +36,7 @@ jobs:
         with: {go-version-file: go.mod}
       - run: go vet ./... && go vet -tags integration ./...
       - run: go test -coverprofile=coverage.out ./...
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           files: coverage.out
@@ -95,7 +95,7 @@ jobs:
           sudo env "PATH=$PATH" INCUS_TEST_POOL=default INCUS_TEST_INSTANCE=csi-it-vm \
             go test -tags integration -coverpkg=./internal/incusvol/... -coverprofile=coverage-integration.out ./test/integration/... -v
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           files: coverage-integration.out

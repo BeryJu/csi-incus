@@ -33,9 +33,11 @@ hand-rolled HTTP calls to the Incus API.
 ## Deployment prerequisites
 
 1. **A Kubernetes Node's name must equal its Incus instance's name.**
-   `NodeGetInfo` reports the node's hostname as its CSI `NodeID`, and
-   `ControllerPublishVolume` uses that ID directly as the Incus instance
-   name to attach to.
+   `NodeGetInfo` reports the Kubernetes Node name (from the `NODE_NAME` env
+   var — a pod's own hostname is its pod name, not the Node's, so the
+   DaemonSet sets it from the downward API's `spec.nodeName`) as its CSI
+   `NodeID`, and `ControllerPublishVolume` uses that ID directly as the
+   Incus instance name to attach to.
 2. **Block-content-type volumes require the node to be an Incus VM**, not a
    container (an Incus/qemu restriction, not something this driver can work
    around). Use `contentType: filesystem` if your nodes are containers.

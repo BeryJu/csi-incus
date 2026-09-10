@@ -22,6 +22,13 @@ spec:
           args:
             - --mode=node
             - --endpoint=unix:///csi/csi.sock
+          env:
+            # A pod's hostname is its pod name, not the Kubernetes Node's
+            # name — NodeGetInfo needs the latter, since
+            # ControllerPublishVolume uses it directly as the Incus
+            # instance name to attach to.
+            - name: NODE_NAME
+              valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
           securityContext:
             privileged: true
           volumeMounts:

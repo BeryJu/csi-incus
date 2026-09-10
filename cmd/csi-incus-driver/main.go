@@ -22,7 +22,7 @@ func main() {
 	var (
 		endpoint   = flag.String("endpoint", "unix:///csi/csi.sock", "CSI gRPC endpoint")
 		mode       = flag.String("mode", "controller,node", "comma-separated: controller, node")
-		nodeID     = flag.String("node-id", "", "Incus instance name of this node (must match the k8s Node name); defaults to hostname")
+		nodeID     = flag.String("node-id", "", "Incus instance name of this node (must match the k8s Node name); defaults to $NODE_NAME, then hostname")
 		incusAddr  = flag.String("incus-addr", os.Getenv("INCUS_ADDR"), "Incus server address (https://host:8443, or empty/unix://path for the local socket); only needed in controller mode")
 		clientCert = flag.String("incus-client-cert", os.Getenv("INCUS_CLIENT_CERT"), "Incus TLS client cert (PEM or file path)")
 		clientKey  = flag.String("incus-client-key", os.Getenv("INCUS_CLIENT_KEY"), "Incus TLS client key (PEM or file path)")
@@ -37,11 +37,11 @@ func main() {
 	}
 
 	if *nodeID == "" {
-		h, err := os.Hostname()
+		id, err := resolveNodeID()
 		if err != nil {
 			log.Fatalf("determine node id: %v", err)
 		}
-		*nodeID = h
+		*nodeID = id
 	}
 
 	srv := grpc.NewServer()
@@ -77,6 +77,18 @@ func main() {
 	if err := srv.Serve(listener); err != nil {
 		log.Fatalf("serve: %v", err)
 	}
+}
+
+// resolveNodeID is the --node-id default: a pod's own hostname is its pod
+// name, not the Kubernetes Node's name, so the DaemonSet sets NODE_NAME
+// from the downward API (spec.nodeName) for exactly this reason. Hostname
+// is only a fallback for running the binary directly on an Incus instance.
+func resolveNodeID() (string, error) {
+	if n := os.Getenv("NODE_NAME"); n != "" {
+		return n, nil
+	}
+
+	return os.Hostname()
 }
 
 func listen(endpoint string) (net.Listener, error) {

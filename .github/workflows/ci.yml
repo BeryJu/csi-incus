@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "$out"
+            echo "::error::gofmt needs to be run on the files above"
+            exit 1
+          fi
+      - uses: golangci/golangci-lint-action@v9
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - run: go vet ./... && go vet -tags integration ./...
+      - run: go test ./...
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - run: go build ./... && go build -tags integration ./...
+      - run: docker build -t csi-incus:ci .
+
+  integration-test:
+    # Uses the GitHub-hosted runner's built-in KVM support to boot a real
+    # Incus VM, since block-content-type volumes can only attach to VMs.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+
+      - name: Install Incus
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://pkgs.zabbly.com/key.asc | sudo tee /etc/apt/keyrings/zabbly.asc >/dev/null
+          codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+          arch=$(dpkg --print-architecture)
+          cat <<EOF | sudo tee /etc/apt/sources.list.d/zabbly-incus-stable.sources >/dev/null
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: $codename
+          Components: main
+          Architectures: $arch
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y incus qemu-system
+
+      - name: Initialize Incus
+        run: sudo incus admin init --minimal
+
+      - name: Launch test VM
+        run: |
+          sudo incus launch images:alpine/edge csi-it-vm --vm -c limits.memory=512MiB
+          timeout 120 bash -c 'until [ "$(sudo incus list csi-it-vm --format csv -c s)" = "RUNNING" ]; do sleep 2; done'
+
+      - name: Run integration tests
+        run: |
+          sudo env "PATH=$PATH" INCUS_TEST_POOL=default INCUS_TEST_INSTANCE=csi-it-vm \
+            go test -tags integration ./test/integration/... -v
+
+      - name: Delete test VM
+        if: always()
+        run: sudo incus delete --force csi-it-vm || true

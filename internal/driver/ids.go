@@ -37,10 +37,16 @@ func decodeSnapshotID(id string) (pool, volume, snapshot string, err error) {
 }
 
 // deviceName derives the Incus disk device name (and therefore its qemu
-// disk serial) from a volume ID. It must stay <=14 chars: Incus hashes the
-// device name into a shorter serial past that length for virtio-blk/nvme
-// buses, which would break NodeStageVolume's by-id lookup below.
+// disk serial) from a volume ID. Two constraints, both learned the hard
+// way:
+//   - It must stay <=14 chars: Incus hashes the device name into a
+//     shorter serial past that length for virtio-blk/nvme buses.
+//   - It must not contain "-": Incus's actual qemu serial is
+//     "incus_"+deviceName with every "-" doubled (e.g. "csi-ab" becomes
+//     "incus_csi--ab"), which broke NodeStageVolume's by-id substring
+//     lookup below since the literal device name no longer appears
+//     verbatim in the resulting serial.
 func deviceName(volumeID string) string {
 	sum := sha256.Sum256([]byte(volumeID))
-	return "csi-" + hex.EncodeToString(sum[:])[:10]
+	return "csi" + hex.EncodeToString(sum[:])[:9]
 }

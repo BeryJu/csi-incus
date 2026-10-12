@@ -24,6 +24,7 @@ func main() {
 		mode       = flag.String("mode", "controller,node", "comma-separated: controller, node")
 		nodeID     = flag.String("node-id", "", "Incus instance name of this node (must match the k8s Node name); defaults to $NODE_NAME, then hostname")
 		incusAddr  = flag.String("incus-addr", os.Getenv("INCUS_ADDR"), "Incus server address (https://host:8443, or empty/unix://path for the local socket); only needed in controller mode")
+		project    = flag.String("incus-project", os.Getenv("INCUS_PROJECT"), "Incus project instances and volumes live in; empty means the default project")
 		clientCert = flag.String("incus-client-cert", os.Getenv("INCUS_CLIENT_CERT"), "Incus TLS client cert (PEM or file path)")
 		clientKey  = flag.String("incus-client-key", os.Getenv("INCUS_CLIENT_KEY"), "Incus TLS client key (PEM or file path)")
 		serverCert = flag.String("incus-server-cert", os.Getenv("INCUS_SERVER_CERT"), "Incus TLS server cert to trust (PEM or file path)")
@@ -50,6 +51,7 @@ func main() {
 	if modes["controller"] {
 		conn, err := incusvol.Connect(incusvol.ConnConfig{
 			Addr:            *incusAddr,
+			Project:         *project,
 			TLSClientCert:   *clientCert,
 			TLSClientKey:    *clientKey,
 			TLSServerCert:   *serverCert,
@@ -60,7 +62,7 @@ func main() {
 		}
 
 		csi.RegisterControllerServer(srv, &driver.ControllerServer{Incus: conn})
-		log.Printf("controller service registered (incus addr=%q)", *incusAddr)
+		log.Printf("controller service registered (incus addr=%q project=%q)", *incusAddr, *project)
 	}
 
 	if modes["node"] {

@@ -19,8 +19,12 @@ import (
 // Addr selects the transport: empty or "unix://<path>" connects over the
 // local unix socket (path "" uses the client library's default socket
 // path); anything else is passed to ConnectIncus as an HTTPS URL.
+//
+// Project scopes every instance and volume call; empty means the default
+// project.
 type ConnConfig struct {
 	Addr            string
+	Project         string
 	TLSClientCert   string // PEM, or a path to a PEM file
 	TLSClientKey    string
 	TLSServerCert   string
@@ -29,6 +33,15 @@ type ConnConfig struct {
 
 // Connect opens an InstanceServer connection per cfg.
 func Connect(cfg ConnConfig) (incus.InstanceServer, error) {
+	s, err := connect(cfg)
+	if err != nil || cfg.Project == "" {
+		return s, err
+	}
+
+	return s.UseProject(cfg.Project), nil
+}
+
+func connect(cfg ConnConfig) (incus.InstanceServer, error) {
 	if cfg.Addr == "" || strings.HasPrefix(cfg.Addr, "unix://") {
 		return incus.ConnectIncusUnix(strings.TrimPrefix(cfg.Addr, "unix://"), nil)
 	}

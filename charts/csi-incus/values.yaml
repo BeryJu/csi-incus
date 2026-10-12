@@ -12,6 +12,9 @@ incus:
   # https://host:8443, or empty/"unix://path" for a local socket (only
   # useful if the controller pod happens to run on the Incus host itself).
   addr: ""
+  # Incus project instances and volumes live in; empty means the default
+  # project.
+  project: ""
   insecureSkipVerify: false
   tls:
     # Leave clientCert/clientKey empty to have the chart generate a

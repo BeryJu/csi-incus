@@ -25,6 +25,10 @@ spec:
           env:
             - name: INCUS_ADDR
               valueFrom: {secretKeyRef: {name: {{ include "csi-incus.fullname" . }}-incus-tls, key: addr}}
+            {{- with .Values.incus.project }}
+            - name: INCUS_PROJECT
+              value: {{ . | quote }}
+            {{- end }}
             - name: INCUS_CLIENT_CERT
               value: /incus-tls/client-cert
             - name: INCUS_CLIENT_KEY

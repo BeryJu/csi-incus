@@ -3,7 +3,7 @@
 // Package integration exercises internal/incusvol against a real Incus
 // server. It needs INCUS_TEST_POOL set to a pool the caller can create
 // custom volumes in; everything else follows incusvol.Connect's usual env
-// vars (INCUS_ADDR, INCUS_CLIENT_CERT, INCUS_CLIENT_KEY, INCUS_SERVER_CERT,
+// vars (INCUS_ADDR, INCUS_PROJECT, INCUS_CLIENT_CERT, INCUS_CLIENT_KEY, INCUS_SERVER_CERT,
 // INCUS_INSECURE_SKIP_VERIFY), defaulting to the local unix socket.
 //
 // Run with: go test -tags integration ./test/integration/...
@@ -28,6 +28,7 @@ func testClient(t *testing.T) incus.InstanceServer {
 
 	c, err := incusvol.Connect(incusvol.ConnConfig{
 		Addr:            os.Getenv("INCUS_ADDR"),
+		Project:         os.Getenv("INCUS_PROJECT"),
 		TLSClientCert:   os.Getenv("INCUS_CLIENT_CERT"),
 		TLSClientKey:    os.Getenv("INCUS_CLIENT_KEY"),
 		TLSServerCert:   os.Getenv("INCUS_SERVER_CERT"),

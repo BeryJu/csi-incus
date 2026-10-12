@@ -43,9 +43,12 @@ hand-rolled HTTP calls to the Incus API.
    around). Use `contentType: filesystem` if your nodes are containers.
 3. The controller needs network access to the Incus API and a client
    certificate authorized on the target project — the
-   `INCUS_ADDR`/`INCUS_CLIENT_CERT`/`INCUS_CLIENT_KEY`/`INCUS_SERVER_CERT`/
+   `INCUS_ADDR`/`INCUS_PROJECT`/`INCUS_CLIENT_CERT`/`INCUS_CLIENT_KEY`/`INCUS_SERVER_CERT`/
    `INCUS_INSECURE_SKIP_VERIFY` env vars (or matching `-incus-*` flags) read
-   by `incusvol.Connect`. The node plugin needs none of this — it only
+   by `incusvol.Connect`. `INCUS_PROJECT` (chart value `incus.project`)
+   selects the project the node instances and volumes live in, defaulting
+   to `default`; a restricted client certificate must have that project in
+   its allowed projects. The node plugin needs none of this — it only
    formats/mounts a device that's already attached.
 
 ## Installing

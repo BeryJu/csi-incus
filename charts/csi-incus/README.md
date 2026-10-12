@@ -24,6 +24,7 @@ controller's TLS client certificate with Incus.
 | `image.tag` | `""` | Defaults to the chart's `appVersion` |
 | `driverName` | `incus.csi.linuxcontainers.org` | CSI driver name, must match across the CSIDriver object and every StorageClass's `provisioner` |
 | `incus.addr` | `""` | Incus API address (`https://host:8443`), or empty/`unix://path` for a local socket. Required. |
+| `incus.project` | `""` | Incus project instances and volumes live in; empty means the default project |
 | `incus.insecureSkipVerify` | `false` | Skip TLS verification of the Incus server |
 | `incus.tls.clientCert` / `incus.tls.clientKey` | `""` | PEM client cert/key; auto-generated (and kept across upgrades) if left empty |
 | `incus.tls.serverCert` | `""` | PEM cert to pin the Incus server to; omit to trust the system CA pool |

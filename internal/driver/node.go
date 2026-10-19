@@ -3,11 +3,13 @@ package driver
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	mount "k8s.io/mount-utils"
@@ -38,6 +40,7 @@ func (s *NodeServer) NodeGetCapabilities(context.Context, *csi.NodeGetCapabiliti
 	rpcs := []csi.NodeServiceCapability_RPC_Type{
 		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 		csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 	}
 
 	caps := make([]*csi.NodeServiceCapability, len(rpcs))
@@ -189,6 +192,59 @@ func (s *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVo
 	}
 
 	return &csi.NodeExpandVolumeResponse{}, nil
+}
+
+func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	path := req.GetVolumePath()
+	if path == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume_path is required")
+	}
+
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, status.Errorf(codes.NotFound, "volume path %q not found", path)
+	} else if err != nil {
+		return nil, status.Errorf(codes.Internal, "stat %q: %v", path, err)
+	}
+
+	if !info.IsDir() {
+		// raw block: only the device size is knowable
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "open %q: %v", path, err)
+		}
+		defer f.Close()
+
+		size, err := f.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "size of %q: %v", path, err)
+		}
+
+		return &csi.NodeGetVolumeStatsResponse{Usage: []*csi.VolumeUsage{
+			{Unit: csi.VolumeUsage_BYTES, Total: size},
+		}}, nil
+	}
+
+	var st unix.Statfs_t
+	if err := unix.Statfs(path, &st); err != nil {
+		return nil, status.Errorf(codes.Internal, "statfs %q: %v", path, err)
+	}
+
+	bsize := int64(st.Bsize)
+	return &csi.NodeGetVolumeStatsResponse{Usage: []*csi.VolumeUsage{
+		{
+			Unit:      csi.VolumeUsage_BYTES,
+			Total:     int64(st.Blocks) * bsize,
+			Available: int64(st.Bavail) * bsize,
+			Used:      int64(st.Blocks-st.Bfree) * bsize,
+		},
+		{
+			Unit:      csi.VolumeUsage_INODES,
+			Total:     int64(st.Files),
+			Available: int64(st.Ffree),
+			Used:      int64(st.Files - st.Ffree),
+		},
+	}}, nil
 }
 
 // waitForDevice resolves the disk-by-id symlink Incus/qemu creates for a

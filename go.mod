@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/container-storage-interface/spec v1.13.0
 	github.com/lxc/incus/v7 v7.5.1
-	golang.org/x/sys v0.48.0
+	golang.org/x/sys v0.49.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	k8s.io/mount-utils v0.37.1

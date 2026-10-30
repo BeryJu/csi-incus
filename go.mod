@@ -6,7 +6,7 @@ require (
 	github.com/container-storage-interface/spec v1.13.0
 	github.com/lxc/incus/v7 v7.5.1
 	golang.org/x/sys v0.49.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	k8s.io/mount-utils v0.37.2
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
@@ -56,7 +56,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

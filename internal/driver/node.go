@@ -213,7 +213,9 @@ func (s *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVol
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "open %q: %v", path, err)
 		}
-		defer f.Close()
+		defer func() {
+			_ = f.Close()
+		}()
 
 		size, err := f.Seek(0, io.SeekEnd)
 		if err != nil {
